@@ -1,0 +1,706 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestor de Productos - SQL Server</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #ff6b6b, #4ecdc4);
+            color: white;
+            padding: 30px;
+            text-align: center;
+            position: relative;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .status-indicator {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .status-connected {
+            background: rgba(72, 187, 120, 0.2);
+            color: #22543d;
+            border: 2px solid #48bb78;
+        }
+
+        .status-disconnected {
+            background: rgba(245, 101, 101, 0.2);
+            color: #742a2a;
+            border: 2px solid #f56565;
+        }
+
+        .content {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 30px;
+            padding: 30px;
+        }
+
+        .form-section {
+            background: #f8f9ff;
+            padding: 25px;
+            border-radius: 15px;
+            border: 2px solid #e1e8ff;
+        }
+
+        .form-section h2 {
+            color: #4a5568;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #2d3748;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .readonly {
+            background-color: #f7fafc !important;
+            color: #4a5568;
+        }
+
+        .btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-right: 10px;
+            margin-bottom: 10px;
+            position: relative;
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #48bb78, #38a169);
+            color: white;
+        }
+
+        .btn-success:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(72, 187, 120, 0.3);
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #ed8936, #dd6b20);
+            color: white;
+        }
+
+        .btn-warning:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(237, 137, 54, 0.3);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #f56565, #e53e3e);
+            color: white;
+        }
+
+        .btn-danger:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(245, 101, 101, 0.3);
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #ffffff;
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .search-section {
+            margin-bottom: 20px;
+        }
+
+        .search-box {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 16px;
+            background: white;
+        }
+
+        .table-section {
+            background: white;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+
+        .table-section h2 {
+            background: #f7fafc;
+            padding: 20px;
+            margin: 0;
+            color: #4a5568;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .table-container {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        th {
+            background: #f7fafc;
+            font-weight: 600;
+            color: #4a5568;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        tbody tr:hover {
+            background: #f7fafc;
+            transform: scale(1.01);
+            transition: all 0.2s ease;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 5px;
+        }
+
+        .btn-sm {
+            padding: 8px 12px;
+            font-size: 14px;
+        }
+
+        .alert {
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 10px;
+            font-weight: 500;
+        }
+
+        .alert-success {
+            background: #c6f6d5;
+            color: #22543d;
+            border: 1px solid #9ae6b4;
+        }
+
+        .alert-error {
+            background: #fed7d7;
+            color: #742a2a;
+            border: 1px solid #fc8181;
+        }
+
+        .alert-info {
+            background: #bee3f8;
+            color: #2a4365;
+            border: 1px solid #63b3ed;
+        }
+
+        @media (max-width: 768px) {
+            .content {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🛍️ Gestor de Productos</h1>
+            <p>Sistema completo con SQL Server</p>
+            <div id="statusIndicator" class="status-indicator status-disconnected">
+                🔴 Desconectado
+            </div>
+        </div>
+
+        <div class="content">
+            <div class="form-section">
+                <h2 id="formTitle">➕ Agregar Producto</h2>
+                
+                <div id="alertContainer"></div>
+
+                <form id="productForm">
+                    <div class="form-group">
+                        <label for="nombre">Nombre del Producto</label>
+                        <input type="text" id="nombre" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="costo">Costo ($)</label>
+                        <input type="number" id="costo" step="0.01" min="0" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="iva">IVA (%)</label>
+                        <input type="number" id="iva" step="0.01" min="0" max="100" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="precioVenta">Precio de Venta ($)</label>
+                        <input type="number" id="precioVenta" step="0.01" readonly class="readonly">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="proveedor">Proveedor</label>
+                        <input type="text" id="proveedor" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="fechaIngreso">Fecha de Ingreso</label>
+                        <input type="date" id="fechaIngreso" required>
+                    </div>
+
+                    <div class="form-buttons">
+                        <button type="submit" class="btn btn-primary" id="submitBtn">
+                            ➕ Agregar Producto
+                        </button>
+                        <button type="button" class="btn btn-warning" id="cancelBtn" style="display: none;">
+                            ❌ Cancelar
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="table-section">
+                <h2>📋 Lista de Productos</h2>
+                
+                <div class="search-section">
+                    <input type="text" id="searchInput" class="search-box" placeholder="🔍 Buscar productos por nombre, proveedor...">
+                </div>
+
+                <div class="table-container">
+                    <table id="productsTable">
+                        <thead>
+                            <tr>
+                                <th>Nombre</th>
+                                <th>Costo</th>
+                                <th>IVA (%)</th>
+                                <th>Precio Venta</th>
+                                <th>Proveedor</th>
+                                <th>Fecha Ingreso</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="productsTableBody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuración de la API
+        const API_BASE_URL = 'http://localhost:3000/api';
+
+        // Variables globales
+        let productos = [];
+        let editingId = null;
+        let isLoading = false;
+
+        // Elementos del DOM
+        const form = document.getElementById('productForm');
+        const formTitle = document.getElementById('formTitle');
+        const submitBtn = document.getElementById('submitBtn');
+        const cancelBtn = document.getElementById('cancelBtn');
+        const alertContainer = document.getElementById('alertContainer');
+        const searchInput = document.getElementById('searchInput');
+        const tableBody = document.getElementById('productsTableBody');
+        const statusIndicator = document.getElementById('statusIndicator');
+
+        // Elementos del formulario
+        const nombreInput = document.getElementById('nombre');
+        const costoInput = document.getElementById('costo');
+        const ivaInput = document.getElementById('iva');
+        const precioVentaInput = document.getElementById('precioVenta');
+        const proveedorInput = document.getElementById('proveedor');
+        const fechaIngresoInput = document.getElementById('fechaIngreso');
+
+        // Inicializar fecha actual
+        fechaIngresoInput.value = new Date().toISOString().split('T')[0];
+
+        // Actualizar estado de conexión
+        function updateConnectionStatus(connected) {
+            if (connected) {
+                statusIndicator.className = 'status-indicator status-connected';
+                statusIndicator.textContent = '🟢 Conectado';
+            } else {
+                statusIndicator.className = 'status-indicator status-disconnected';
+                statusIndicator.textContent = '🔴 Desconectado';
+            }
+        }
+
+        // Mostrar estado de carga en botón
+        function showLoading(button, loading = true) {
+            if (loading) {
+                button.disabled = true;
+                button.innerHTML = '<span class="loading"></span> Procesando...';
+            } else {
+                button.disabled = false;
+                button.innerHTML = button.getAttribute('data-original-text');
+            }
+        }
+
+        // Calcular precio de venta automáticamente
+        function calcularPrecioVenta() {
+            const costo = parseFloat(costoInput.value) || 0;
+            const iva = parseFloat(ivaInput.value) || 0;
+            
+            if (costo > 0) {
+                const precioVenta = costo + (costo * iva / 100);
+                precioVentaInput.value = precioVenta.toFixed(2);
+            } else {
+                precioVentaInput.value = '';
+            }
+        }
+
+        // Event listeners para cálculo automático
+        costoInput.addEventListener('input', calcularPrecioVenta);
+        ivaInput.addEventListener('input', calcularPrecioVenta);
+
+        // Mostrar alertas
+        function showAlert(message, type = 'success') {
+            alertContainer.innerHTML = `
+                <div class="alert alert-${type}">
+                    ${message}
+                </div>
+            `;
+            
+            setTimeout(() => {
+                alertContainer.innerHTML = '';
+            }, 5000);
+        }
+
+        // Generar ID único
+        function generateId() {
+            return Date.now().toString(36) + Math.random().toString(36).substr(2);
+        }
+
+        // Realizar petición API
+        async function apiRequest(endpoint, options = {}) {
+            try {
+                const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...options.headers
+                    },
+                    ...options
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Error en la petición');
+                }
+
+                updateConnectionStatus(true);
+                return await response.json();
+            } catch (error) {
+                updateConnectionStatus(false);
+                throw error;
+            }
+        }
+
+        // Cargar productos desde la API
+        async function loadProducts() {
+            try {
+                productos = await apiRequest('/productos');
+                renderTable();
+            } catch (error) {
+                console.error('Error cargando productos:', error);
+                showAlert(`❌ Error cargando productos: ${error.message}`, 'error');
+            }
+        }
+
+        // Agregar o modificar producto
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            if (isLoading) return;
+            isLoading = true;
+
+            // Guardar texto original del botón
+            submitBtn.setAttribute('data-original-text', submitBtn.innerHTML);
+            showLoading(submitBtn);
+            
+            const producto = {
+                id: editingId || generateId(),
+                nombre: nombreInput.value.trim(),
+                costo: parseFloat(costoInput.value),
+                iva: parseFloat(ivaInput.value),
+                precioVenta: parseFloat(precioVentaInput.value),
+                proveedor: proveedorInput.value.trim(),
+                fechaIngreso: fechaIngresoInput.value
+            };
+
+            try {
+                if (editingId) {
+                    // Modificar producto existente
+                    await apiRequest(`/productos/${editingId}`, {
+                        method: 'PUT',
+                        body: JSON.stringify(producto)
+                    });
+                    showAlert('✅ Producto modificado exitosamente', 'success');
+                    resetForm();
+                } else {
+                    // Agregar nuevo producto
+                    await apiRequest('/productos', {
+                        method: 'POST',
+                        body: JSON.stringify(producto)
+                    });
+                    showAlert('✅ Producto agregado exitosamente', 'success');
+                    form.reset();
+                    fechaIngresoInput.value = new Date().toISOString().split('T')[0];
+                }
+
+                await loadProducts();
+            } catch (error) {
+                console.error('Error guardando producto:', error);
+                showAlert(`❌ Error: ${error.message}`, 'error');
+            } finally {
+                isLoading = false;
+                showLoading(submitBtn, false);
+            }
+        });
+
+        // Resetear formulario
+        function resetForm() {
+            editingId = null;
+            formTitle.textContent = '➕ Agregar Producto';
+            submitBtn.textContent = '➕ Agregar Producto';
+            submitBtn.className = 'btn btn-primary';
+            cancelBtn.style.display = 'none';
+            form.reset();
+            fechaIngresoInput.value = new Date().toISOString().split('T')[0];
+        }
+
+        // Cancelar edición
+        cancelBtn.addEventListener('click', resetForm);
+
+        // Editar producto
+        async function editProduct(id) {
+            try {
+                const producto = await apiRequest(`/productos/${id}`);
+                
+                editingId = id;
+                nombreInput.value = producto.nombre;
+                costoInput.value = producto.costo;
+                ivaInput.value = producto.iva;
+                precioVentaInput.value = producto.precioVenta;
+                proveedorInput.value = producto.proveedor;
+                fechaIngresoInput.value = producto.fechaIngreso.split('T')[0];
+
+                formTitle.textContent = '✏️ Modificar Producto';
+                submitBtn.textContent = '💾 Guardar Cambios';
+                submitBtn.className = 'btn btn-success';
+                cancelBtn.style.display = 'inline-block';
+
+                // Scroll al formulario
+                document.querySelector('.form-section').scrollIntoView({ behavior: 'smooth' });
+            } catch (error) {
+                console.error('Error cargando producto:', error);
+                showAlert(`❌ Error cargando producto: ${error.message}`, 'error');
+            }
+        }
+
+        // Eliminar producto
+        async function deleteProduct(id) {
+            if (!confirm('¿Estás seguro de que deseas eliminar este producto?')) {
+                return;
+            }
+
+            try {
+                await apiRequest(`/productos/${id}`, {
+                    method: 'DELETE'
+                });
+                
+                showAlert('🗑️ Producto eliminado exitosamente', 'success');
+                await loadProducts();
+                
+                // Si estamos editando el producto eliminado, resetear el formulario
+                if (editingId === id) {
+                    resetForm();
+                }
+            } catch (error) {
+                console.error('Error eliminando producto:', error);
+                showAlert(`❌ Error eliminando producto: ${error.message}`, 'error');
+            }
+        }
+
+        // Renderizar tabla
+        function renderTable(filteredProducts = null) {
+            const productsToRender = filteredProducts || productos;
+            
+            if (productsToRender.length === 0) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="7" style="text-align: center; padding: 40px; color: #a0aec0;">
+                            ${filteredProducts ? '🔍 No se encontraron productos' : '📦 No hay productos registrados'}
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tableBody.innerHTML = productsToRender.map(producto => `
+                <tr>
+                    <td><strong>${producto.nombre}</strong></td>
+                    <td>$${parseFloat(producto.costo).toFixed(2)}</td>
+                    <td>${parseFloat(producto.iva).toFixed(1)}%</td>
+                    <td><strong>$${parseFloat(producto.precioVenta).toFixed(2)}</strong></td>
+                    <td>${producto.proveedor}</td>
+                    <td>${new Date(producto.fechaIngreso).toLocaleDateString('es-ES')}</td>
+                    <td>
+                        <div class="action-buttons">
+                            <button class="btn btn-warning btn-sm" onclick="editProduct('${producto.id}')">
+                                ✏️ Editar
+                            </button>
+                            <button class="btn btn-danger btn-sm" onclick="deleteProduct('${producto.id}')">
+                                🗑️ Eliminar
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // Búsqueda con debounce
+        let searchTimeout;
+        searchInput.addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase().trim();
+            
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(async () => {
+                if (searchTerm === '') {
+                    renderTable();
+                } else {
+                    try {
+                        const filteredProducts = await apiRequest(`/productos/buscar/${encodeURIComponent(searchTerm)}`);
+                        renderTable(filteredProducts);
+                    } catch (error) {
+                        console.error('Error en búsqueda:', error);
+                        // Fallback a búsqueda local si falla la API
+                        const localFiltered = productos.filter(producto => 
+                            producto.nombre.toLowerCase().includes(searchTerm) ||
+                            producto.proveedor.toLowerCase().includes(searchTerm) ||
+                            producto.costo.toString().includes(searchTerm) ||
+                            producto.precioVenta.toString().includes(searchTerm)
+                        );
+                        renderTable(localFiltered);
+                    }
+                }
+            }, 300);
+        });
+
+        // Verificar conexión inicial
+        async function checkConnection() {
+            try {
+                await apiRequest('/productos');
+                updateConnectionStatus(true);
+                showAlert('🟢 Conectado a SQL Server exitosamente', 'info');
+            } catch (error) {
+                updateConnectionStatus(false);
+                showAlert('🔴 No se pudo conectar al servidor. Verifica que el backend esté ejecutándose.', 'error');
+            }
+        }
+
+        // Inicializar la aplicación
+        document.addEventListener('DOMContentLoaded', async () => {
+            await checkConnection();
+            await loadProducts();
+        });
+
+        // Exponer funciones globalmente para los botones
+        window.editProduct = editProduct;
+        window.deleteProduct = deleteProduct;
+    </script>
+</body>
+</html>
